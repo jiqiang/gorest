@@ -24,3 +24,4 @@ _testmain.go
 *.prof
 
 rest
+.DS_Store
