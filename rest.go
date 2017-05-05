@@ -23,10 +23,28 @@ type Staff struct {
 
 var db *sql.DB
 
-func staffsIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	rows, err := db.Query("SELECT staff_id, first_name, last_name, address_id, email, store_id, active FROM staff")
+func init() {
+	var err error
+	db, err = sql.Open("postgres", "host=0.0.0.0 user=postgres password=postgres port=5432 dbname=dvdrental sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func staffsIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(405), 405)
+		return
+	}
+
+	rows, err := db.Query("SELECT staff_id, first_name, last_name, address_id, email, store_id, active FROM staff")
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
 	}
 	defer rows.Close()
 
@@ -40,7 +58,8 @@ func staffsIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		staffs = append(staffs, staff)
 	}
 	if err = rows.Err(); err != nil {
-		log.Fatal(err)
+		http.Error(w, http.StatusText(500), 500)
+		return
 	}
 
 	for _, staff := range staffs {
@@ -48,20 +67,8 @@ func staffsIndex(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 }
 
-// Hello controller
-func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
-}
-
 func main() {
-	var err error
-	db, err = sql.Open("postgres", "host=0.0.0.0 user=postgres password=postgres port=5432 dbname=dvdrental sslmode=disable")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	router := httprouter.New()
-	router.GET("/", staffsIndex)
-	router.GET("/hello/:name", Hello)
+	router.GET("/staffs", staffsIndex)
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
